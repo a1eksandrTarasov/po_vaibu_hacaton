@@ -1,6 +1,13 @@
 import streamlit as st
 import json
 
+# Загрузка данных MCC-кодов
+try:
+    with open("mcc_code.json", "r", encoding="utf-8") as file:
+        mcc_data = json.load(file)
+except FileNotFoundError:
+    mcc_data = {}
+
 # Пример данных о картах
 cards_data = [
     {"card_id": 1, "name_card": "Tinkoff Platinum", "КЭШБЭК": True, "МИЛИ": True, "БАЛЛЫ БАНКА": False},
@@ -10,18 +17,17 @@ cards_data = [
 
 # Пример данных с готовыми категориями и процентами
 preset_cashback_data = {
-    "Tinkoff Platinum": {"Продукты": 5, "Транспорт": 3},
-    "Tinkoff Server": {"Одежда": 2, "Развлечения": 4},
+    "Tinkoff Platinum": {"Продуктовые магазины, супермаркеты": 5, "АЗС (с дополнительными услугами)": 3},
+    "Tinkoff Server": {"Магазины мужской обуви": 2, "Рестораны и кафе": 4},
 }
-
-# Пример категорий
-categories = ["Продукты", "Транспорт", "Одежда", "Развлечения", "Другое"]
+# Использование категорий из mcc_code.json
+categories = list(mcc_data.values())
 
 st.title("Пользователь вводит инфу")
 
 # Хранение данных о введенных картах
 try:
-    with open("../user_data.json", "r") as file:
+    with open("../user_data.json", "r", encoding="utf-8") as file:
         user_data = json.load(file)
 except FileNotFoundError:
     user_data = {"users": {"id": {"cards": []}}}
@@ -42,39 +48,30 @@ bank_points_info = {}
 
 if cashback_enabled:
     st.subheader("Кэшбек")
-    if cashback_info:
-        st.write("Автоматически подставленные категории (можно изменить):")
-        for category, percent in cashback_info.items():
-            cashback_info[category] = st.number_input(f"% (Кэшбек - {category})", min_value=0, max_value=100, value=percent)
-    remaining_categories = [cat for cat in categories if cat not in cashback_info]
-    cashback_count = st.number_input("Сколько категорий хотите добавить для кэшбэка?", min_value=0, max_value=10, value=0)
-    user_added_cashback = []
-    for i in range(cashback_count):
-        category = st.selectbox(f"Категория {i + 1} (Кэшбек)", remaining_categories, key=f"cashback_cat{i}")
-        cashback_percent = st.number_input(f"% (Кэшбек - {category})", min_value=0, max_value=100, key=f"cashback_perc{i}")
-        cashback_info[category] = cashback_percent
-        user_added_cashback.append(category)
-        remaining_categories.remove(category)
+    for category, percent in cashback_info.items():
+        cashback_info[category] = st.number_input(f"% (Кэшбек - {category})", min_value=0, max_value=100, value=percent)
 
 if miles_enabled:
     st.subheader("Мили")
+    remaining_categories = list(categories)
     miles_count = st.number_input("Сколько категорий хотите добавить для миль?", min_value=0, max_value=10, value=0)
-    user_added_miles = []
     for i in range(miles_count):
-        category = st.selectbox(f"Категория {i + 1} (Мили)", [cat for cat in categories if cat not in user_added_miles], key=f"miles_cat{i}")
+        category = st.selectbox(f"Категория {i + 1} (Мили)", remaining_categories, key=f"miles_cat{i}")
         miles_percent = st.number_input(f"% (Мили - {category})", min_value=0, max_value=100, key=f"miles_perc{i}")
         miles_info[category] = miles_percent
-        user_added_miles.append(category)
+        if category in remaining_categories:
+            remaining_categories.remove(category)
 
 if bank_points_enabled:
     st.subheader("Баллы банка")
+    remaining_categories = list(categories)
     points_count = st.number_input("Сколько категорий хотите добавить для баллов банка?", min_value=0, max_value=10, value=0)
-    user_added_points = []
     for i in range(points_count):
-        category = st.selectbox(f"Категория {i + 1} (Баллы банка)", [cat for cat in categories if cat not in user_added_points], key=f"points_cat{i}")
+        category = st.selectbox(f"Категория {i + 1} (Баллы банка)", remaining_categories, key=f"points_cat{i}")
         points_percent = st.number_input(f"% (Баллы банка - {category})", min_value=0, max_value=100, key=f"points_perc{i}")
         bank_points_info[category] = points_percent
-        user_added_points.append(category)
+        if category in remaining_categories:
+            remaining_categories.remove(category)
 
 if st.button("Добавить карту"):
     user_data["users"]["id"]["cards"].append({
@@ -86,7 +83,7 @@ if st.button("Добавить карту"):
         }
     })
 
-    with open("../user_data.json", "w", encoding="UTF-8") as file:
+    with open("../user_data.json", "w", encoding="utf-8") as file:
         json.dump(user_data, file, indent=4, ensure_ascii=False)
 
     st.success(f"Карта {selected_card_name} добавлена!")
