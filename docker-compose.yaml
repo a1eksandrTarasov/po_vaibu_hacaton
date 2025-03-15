@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  page1:
+    build: ./page1
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./page1:/app
+
+  page2:
+    build: ./page2
+    ports:
+      - "8502:8501"
+    volumes:
+      - ./page2:/app
